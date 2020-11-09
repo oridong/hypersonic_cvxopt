@@ -73,9 +73,11 @@ classdef vehicle
             % RHO
             this.fn.h = @(r) r - this.params.R;
             this.fn.rho_hdl = @(r) piecewise(r >= this.params.R, ... if
-                                                this.params.rho0*exp(-this.fn.h(r)/this.params.H),...
-                                             r < this.params.R, ... elseif
-                                                this.params.rho0);
+                                               this.params.rho0*exp(-this.fn.h(r)/this.params.H),...
+                                            r < this.params.R, ... elseif
+                                               this.params.rho0);
+                                        
+                                        
             % ALPHA                    
             this.fn.alpha_hdl = @(v) piecewise(v>4.570, ... if
                                                     40,... then
@@ -83,22 +85,22 @@ classdef vehicle
                                                     40-0.20705*(1000*v-4570)^2/(340^2)); % then  
             % LIFT COEFFICIENT    
             this.fn.Cl_hdl = @(v) -0.041065 ...
-                                    + 0.016292*this.fn.alpha_hdl(v) ...
-                                    + 0.0002602*(this.fn.alpha_hdl(v)^2);
+                                    + 0.016292*this.alpha(v) ...
+                                    + 0.0002602*(this.alpha(v)^2);
             % DRAG COEFFICIENT
             this.fn.Cd_hdl = @(v) 0.080505 ...
                                     - 0.03026*this.fn.Cl_hdl(v) ...
-                                    + 0.086495*(this.fn.Cl_hdl(v))^2;
+                                    + 0.86495*(this.fn.Cl_hdl(v))^2;
 
             % LIFT
             m = this.params.m;
             R = this.params.R;
             A = this.params.A;
-            this.fn.L_hdl = @(r,v) (A*R/(2*m)) * this.fn.rho_hdl(r) ...
+            this.fn.L_hdl = @(r,v) (A*R/(2*m)) * this.rho(r) ...
                                                 * v^2 * this.fn.Cl_hdl(v);
 
             % DRAG
-            this.fn.D_hdl = @(r,v) (A*R/(2*m)) * this.fn.rho_hdl(r) ...
+            this.fn.D_hdl = @(r,v) (A*R/(2*m)) * this.rho(r) ...
                                                 * v^2 * this.fn.Cd_hdl(v);
 
 
@@ -197,107 +199,46 @@ classdef vehicle
         
         
 %% DYNAMICS and COST FUNCTIONS     
+
         function rho = rho(this,r)
             % Check if numeric
-            if isnumeric(r)
-                syms rsym
-                rho_sym = this.fn.rho_hdl(rsym);
-                rho = double(subs(rho_sym,rsym,r));
-
+            if isnumeric(r)                                     
+                if norm(r)>this.params.R
+                    rho = this.params.rho0*exp(-this.fn.h(r)/this.params.H);
+                else
+                    rho = this.params.rho0;
+                end
+           
             % Otherwise, if symbolic:
             else
                 rho = this.fn.rho_hdl(r); 
             end
-        end %end rho
-        
-    
-        % Lift and drag coefficients as a function of velocity 
-        function [Cl Cd] = coeffs(this,v)
-            
-            % Check if numeric
-            if isnumeric(v)
-                syms vsym
-                Cl_sym = this.fn.Cl_hdl(vsym);
-                Cl = double(subs(Cl_sym,vsym,v));
-                
-                Cd_sym = this.fn.Cd_hdl(vsym);
-                Cd = double(subs(Cd_sym,vsym,v));
+        end % end fx
 
+        function alpha = alpha(this,v)
+           % Check if numeric
+            if isnumeric(v)                                     
+                if norm(v)>4.570
+                    alpha=40;
+                else
+                    alpha=40-0.20705*(1000*v-4570)^2/(340^2);
+                end
+           
             % Otherwise, if symbolic:
             else
-                Cl = this.fn.Cl_hdl(v); 
-                
-                Cd_hdl = this.fn.Cd_hdl(v); 
+                alpha = this.fn.alpha_hdl(v); 
             end
-        end % end coeffs
-      
-        %%{
-        % Lift as a function of velocity and rho
-        function L = L(this,r,v)
-
-            % Check if numeric
-            if isnumeric(r)
-                syms rsym vsym
-                L_sym = this.fn.L_hdl(rsym, vsym);
-                L = double(subs(L_sym,[rsym vsym],[r v]));
-
-            % Otherwise, if symbolic:
-            else
-                L = this.fn.L_hdl(r,v); 
-            end
-        end % end lift
-      
-
-        % Drag as a function of velocity and rho
-        function D = D(this,r,v)
-            % Check if numeric
-            if isnumeric(r)
-                syms rsym vsym
-                D_sym = this.fn.D_hdl(rsym, vsym);
-                D = double(subs(D_sym,[rsym vsym],[r v]));
-
-            % Otherwise, if symbolic:
-            else
-                D = this.fn.D_hdl(r,v); 
-            end
-        end % end drag
+        end
         
-        
-        % Nonlinear dynamics as a function of state
         function fx = fx(this,x0,u0)
-            n = this.opt_in.n;
-            % Check if numeric
-            if isnumeric(x0)
-                syms u
-                x = sym('x',[n,1]);
-                fx_sym = this.fn.fx_hdl(x,u);
-                
-                
-                % TODO: Check for divide by zero
-                % Verify divide by zero error
-                %for i1=1:n
-                %   for i2=1:n
-                %      % Replace divide by zero errors with eps for A
-                %      [fx_num,fx_denom] = numden(fx_sym(i1,i2));
-% 
-%                       fx_div0 = (double(subs(fx_denom,[x; u],[x0; u0]))==0.0);
-% 
-%                       if fx_div0
-%                          fprintf('Divide by zero error, replacing with eps!\n' )
-%                          fx_sym(i1,i2) = fx_num / eps;
-%                       end
-%                    end
-%                 end
-                
-                
-                fx = double(subs(fx_sym,[x;u],[x0;u0]));
-
-            % Otherwise, if symbolic:
-            else
-                fx = this.fn.fx_hdl(x0,u0); 
+            fx = this.fn.fx_hdl(x0,u0);
+            
+            for j=1:length(x0)
+                if isinf(fx(j));
+                   fx(j) = 1/eps; 
+                end
             end
         end % end fx
-        
         
         
         % Determine symbolic linearized A matrix
@@ -308,7 +249,7 @@ classdef vehicle
             x = sym('x',[n 1]);
            
             % Create symbolic derivatives vector
-            derivs = this.fx(x,u);
+            derivs = this.fn.fx_hdl(x,u);
            
             % Compute Jacobian matrices
             A_sym = jacobian(derivs,x);
