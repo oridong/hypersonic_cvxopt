@@ -58,7 +58,7 @@ classdef vehicle
 
             v_i = 7.627; % [km/s], initial velocity magnitude
             this.ic.v_i = v_i * this.params.v_sf;
-            this.ic.fpa_i = deg2rad(-0.5); % [rad], FPA of initial v_i 
+            this.ic.fpa_i = deg2rad(-5);%deg2rad(-0.5); % [rad], FPA of initial v_i 
 
             this.ic.x_i = [ this.ic.r_i;...     x1
                             this.ic.theta_i;... x2
@@ -342,8 +342,8 @@ classdef vehicle
                                 
                 % Convert to discrete-time model
                 %dis_sys = c2d(cont_sys,dt);
-                %A_d(r1:r2,:) = double(dis_sys.A);
-                %B_d(r1:r2,1) =  double(dis_sys.B);
+                A_d(r1:r2,:) = double(dis_sys.A);
+                B_d(r1:r2,1) =  double(dis_sys.B);
                 
                 
                 % TESTING
@@ -352,8 +352,8 @@ classdef vehicle
                 %   which indicates velocity and gamma coupling
                 %   is unstable ... look at dynamics!
                 %   (could also be due to u term...)
-                A_d(r1:r2,:) = eye(n) + dt* double(cont_sys.A );
-                B_d(r1:r2,1) =  dt* double(cont_sys.B );
+                %A_d(r1:r2,:) = eye(n) + dt* double(cont_sys.A );
+                %B_d(r1:r2,1) =  dt* double(cont_sys.B );
             end
             
         end % end linsys_d
@@ -570,7 +570,7 @@ classdef vehicle
 
             subplot(2,4,3)
             hold all
-            plot(t,norm(r0-this.params.R))
+            plot(t,r0-this.params.R)
             title('Vehicle Altitude vs. Time')
             xlabel('Time [s]')
             ylabel('Altitude [km]')

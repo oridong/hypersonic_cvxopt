@@ -10,7 +10,7 @@ addpath('matfiles/')
 %
 % Select bank angle sigma in degrees!
 %
-sigma0 = deg2rad(0);      % [rad], initial control
+sigma0 = deg2rad(-20);      % [rad], initial control
 
 %
 % Define and initialize values
@@ -29,9 +29,14 @@ ev = vehicle(sigma0);
 
 
 % PADDY
-ev.opt_in.dt = 0.01*ev.params.t_sf; 
-ev.opt_in.N = 1e5;                              % [-], number of discrete points
-ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
+%ev.opt_in.dt = 0.01*ev.params.t_sf; 
+%ev.opt_in.N = 1e5;                              % [-], number of discrete points
+%ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
+
+
+ev.opt_in.dt = 0.8*ev.params.t_sf; 
+ev.opt_in.tf = 2500*ev.params.t_sf;             % [s], final time
+ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
 
 
 %
@@ -52,7 +57,7 @@ ev.opt_in.u0 = u0;
 
 ev.plot_traj(t,x0)
 
-%{
+%%{
 %
 % Solve SOCP problems until convergence
 %
