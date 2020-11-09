@@ -12,26 +12,31 @@ addpath('matfiles/')
 %
 sigma0 = deg2rad(0);      % [rad], initial control
 
-%
-% Define and initialize values
-%
 % Create vehicle
 ev = vehicle(sigma0);
 
-% Problem parameters
-ev.opt_in.dt = 0.08*ev.params.t_sf; 
+%
+% Define and initialize values
+%
+%dt = 0.08*ev.params.t_sf;
 
-ev.opt_in.N = 100;                              % [-], number of discrete points
-ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
+%N = 100;
+%tf = ev.opt_in.dt*(ev.opt_in.N-1);
 
-%ev.opt_in.tf = 100*ev.params.t_sf;             % [s], final time
-%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
-
+%tf = 100*ev.params.t_sf;             % [s], final time
+%N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
 
 % LOOKS GOOD
-%ev.opt_in.dt = 0.8*ev.params.t_sf; 
-%ev.opt_in.tf = 2500*ev.params.t_sf;             % [s], final time
-%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
+dt = 0.8*ev.params.t_sf; 
+tf = 2500*ev.params.t_sf;             % [s], final time
+N = round(tf/dt +1);     % [-], number of discrete points
+
+
+% Problem parameters
+ev.opt_in.dt = dt; 
+ev.opt_in.N = N; 
+ev.opt_in.tf = tf;   
+
 
 
 %
@@ -50,9 +55,9 @@ u0 = ev.ic.u_i;
 ev.opt_in.x0 = x0;
 ev.opt_in.u0 = u0;
 
-ev.plot_traj(t,x0)
+ev.plot_traj(t,x0,ones(1,N)*u0)
 
-%%{
+%{
 %
 % Solve SOCP problems until convergence
 %

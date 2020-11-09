@@ -533,13 +533,19 @@ classdef vehicle
         
         % Plotting
         % TODO: Allow input arguments for arbitrary trajectories
-        function plot_traj(this,t,x0,u0)
+        function plot_traj(this,t,x0,u0,fig_h)
             if nargin == 1
                 % Initialize inputs
                 t     = this.opt_in.times;
                 x0    = this.opt_in.x0;
                 u0    = this.opt_in.u0;
+            elseif nargin==3
+                u0    = this.opt_in.u0;
+            elseif nargin==4
+                fig_h = figure;
             end
+            
+        
                 r0      = x0(1,:)/this.params.r_sf;
                 theta0  = x0(2,:);
                 v0      = x0(3,:)/this.params.v_sf;
@@ -554,50 +560,64 @@ classdef vehicle
                 v_vec(:,i) = v0(i)*ev(:,i);
             end
             
+            figure(fig_h.Number);
             % Plot result 
-            h = figure;
-            
-            subplot(2,4,[1 2 5 6])
+            subplot(2,3,1)
+            hold all
+            circle(0,0,this.params.R)
             hold all
             plot(r_vec(1,:),r_vec(2,:))
-            circle(0,0,this.params.R);
             title('Vehicle Approach to Earth')
             xlabel('x [km]')
             ylabel('y [km]')
-            xlim([0.9*min(r_vec(1,:)),1.01*max(r_vec(1,:))]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
-            ylim([0.99995,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
-            legend('Vehicle Trajectory','Earths surface')
+            xlim([-this.params.R 0]) 
+            ylim([-this.params.R inf])
+            %xlim([-inf inf]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
+            %ylim([0.98*this.params.R,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
+            legend('Earths surface')
 
-            subplot(2,4,3)
+            subplot(2,3,2)
             hold all
             plot(t,r0-this.params.R)
             title('Vehicle Altitude vs. Time')
             xlabel('Time [s]')
             ylabel('Altitude [km]')
+            xlim([-inf inf])
 
-            subplot(2,4,4)
+            subplot(2,3,3)
             hold all
             plot(t,v0)
-            plot(t,v_vec(1,:))
-            plot(t,v_vec(2,:))
-            title('Vehicle velocity vs. Time')
+            title('Vehicle Velocity vs. Time')
             xlabel('Time [s]')
             ylabel('Velocity [km/s]')
-            legend('Velocity Norm','V_x','V_y')
+            xlim([-inf inf])
 
-            subplot(2,4,7)
+            subplot(2,3,4)
             hold all
-            plot(t,r_vec(1,:))
-            title('Vehicle X vs. Time')
+            plot(t,acosd(u0))
+            ylim([-1,181])
+            title('Control Input vs. Time')
             xlabel('Time [s]')
-            ylabel('X [km]')
+            ylabel('Bank Angle [deg]')
+            xlim([-inf inf])
+            
+            
+            subplot(2,3,5)
+            hold all
+            plot(t,rad2deg(theta0))
+            title('Vehicle Theta vs. Time')
+            xlabel('Time [s]')
+            ylabel('Longitude [deg]')
+            xlim([-inf inf])
 
-            subplot(2,4,8)
+            subplot(2,3,6)
             hold all
-            plot(t,r_vec(2,:))
-            title('Vehicle Y vs. Time')
+            plot(t,rad2deg(fpa0))
+            title('Vehicle FPA vs. Time')
             xlabel('Time [s]')
-            ylabel('Y [km]')
+            ylabel('Flight Path Angle [deg]')
+            xlim([-inf inf])
+            
         end % end plot_traj
         
         
