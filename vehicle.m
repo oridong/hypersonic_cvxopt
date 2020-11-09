@@ -539,8 +539,10 @@ classdef vehicle
                 t     = this.opt_in.times;
                 x0    = this.opt_in.x0;
                 u0    = this.opt_in.u0;
+                fig_h = figure;
             elseif nargin==3
                 u0    = this.opt_in.u0;
+                fig_h = figure;
             elseif nargin==4
                 fig_h = figure;
             end

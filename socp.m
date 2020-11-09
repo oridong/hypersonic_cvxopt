@@ -52,11 +52,11 @@ function [O] = socp(I,ev,k_sc)
     minimize(real(transpose(c)*z))
     
     % Initial conditions
-    %z(1:n,1) == x_i;
+    norm(z(1,1)) <= x_i(1);
     
     % Final conditions
     % TODO: Select sensible final conditions
-    %z(end-n+1,end) == x_f;
+    %z(1,end) == x_f;
     
     % Dynamics
     % M*z == F;

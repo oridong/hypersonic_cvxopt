@@ -10,7 +10,7 @@ addpath('matfiles/')
 %
 % Select bank angle sigma in degrees!
 %
-sigma0 = deg2rad(0);      % [rad], initial control
+sigma0 = deg2rad(180);      % [rad], initial control
 
 % Create vehicle
 ev = vehicle(sigma0);
@@ -18,31 +18,29 @@ ev = vehicle(sigma0);
 %
 % Define and initialize values
 %
-%dt = 0.08*ev.params.t_sf;
+dt = 0.08*ev.params.t_sf;
 
-%N = 100;
-%tf = ev.opt_in.dt*(ev.opt_in.N-1);
+N = 1000;
+tf = dt*(N-1);
 
 %tf = 100*ev.params.t_sf;             % [s], final time
-%N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
+%N = round(tf/dt +1);     % [-], number of discrete points
 
 % LOOKS GOOD
-dt = 0.8*ev.params.t_sf; 
-tf = 2500*ev.params.t_sf;             % [s], final time
-N = round(tf/dt +1);     % [-], number of discrete points
-
+%dt = 0.8*ev.params.t_sf; 
+%tf = 2500*ev.params.t_sf;             % [s], final time
+%N = round(tf/dt +1);     % [-], number of discrete points
 
 % Problem parameters
 ev.opt_in.dt = dt; 
 ev.opt_in.N = N; 
 ev.opt_in.tf = tf;   
 
-
-
 %
 % Propogate initial conditions with full NL dynamics
 %   to produce initial trajectory for solver
 % 
+
 % Initialize trajectory
 [t,r0,theta0,v0,fpa0] = ev.gen_traj();
 % save('x0_traj3_N100.mat','t','r0','theta0','v0','fpa0')
@@ -57,7 +55,7 @@ ev.opt_in.u0 = u0;
 
 ev.plot_traj(t,x0,ones(1,N)*u0)
 
-%{
+%%{
 %
 % Solve SOCP problems until convergence
 %
@@ -105,9 +103,9 @@ end
 
 lng = length(O);
 ind = lng - 1;
-ev.plot_traj(O{ind}.t,O{ind}.x)
+ev.plot_traj(O{ind}.t,O{ind}.x,O{ind}.u)
 
-save('matfiles/SUCCESS_7.mat')
+save('matfiles/SUCCESS_9.mat')
 %}
 
 %
