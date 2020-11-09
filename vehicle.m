@@ -71,10 +71,10 @@ classdef vehicle
             % Function handles
             %
             % RHO
-            this.fn.h = @(r) r - this.params.R;
-            this.fn.rho_hdl = @(r) piecewise(r >= this.params.R, ... if
+            this.fn.h = @(r) r/this.params.r_sf - this.params.R;
+            this.fn.rho_hdl = @(r) piecewise(r > 1, ... if
                                                this.params.rho0*exp(-this.fn.h(r)/this.params.H),...
-                                            r < this.params.R, ... elseif
+                                            r <= 1, ... elseif
                                                this.params.rho0);
                                         
                                         
@@ -203,7 +203,7 @@ classdef vehicle
         function rho = rho(this,r)
             % Check if numeric
             if isnumeric(r)                                     
-                if norm(r)>this.params.R
+                if norm(r)>1
                     rho = this.params.rho0*exp(-this.fn.h(r)/this.params.H);
                 else
                     rho = this.params.rho0;
@@ -540,10 +540,11 @@ classdef vehicle
                 x0    = this.opt_in.x0;
                 u0    = this.opt_in.u0;
             end
-                r0      = x0(1,:);
+                r0      = x0(1,:)/this.params.r_sf;
                 theta0  = x0(2,:);
-                v0      = x0(3,:);
+                v0      = x0(3,:)/this.params.v_sf;
                 fpa0    = x0(4,:);
+                t = t/this.params.t_sf;
                 
             for i=1:length(theta0)
                 er(:,i) = this.e_r(theta0(i));
@@ -559,7 +560,7 @@ classdef vehicle
             subplot(2,4,[1 2 5 6])
             hold all
             plot(r_vec(1,:),r_vec(2,:))
-            circle(0,0,1);
+            circle(0,0,this.params.R);
             title('Vehicle Approach to Earth')
             xlabel('x [km]')
             ylabel('y [km]')
@@ -569,7 +570,7 @@ classdef vehicle
 
             subplot(2,4,3)
             hold all
-            plot(t,r0)
+            plot(t,norm(r0-this.params.R))
             title('Vehicle Altitude vs. Time')
             xlabel('Time [s]')
             ylabel('Altitude [km]')
