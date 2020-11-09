@@ -21,11 +21,11 @@ ev = vehicle(sigma0);
 % Problem parameters
 ev.opt_in.dt = 0.01*ev.params.t_sf; 
 
-%ev.opt_in.N = 100;                              % [-], number of discrete points
-%ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
+ev.opt_in.N = 100;                              % [-], number of discrete points
+ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
 
-ev.opt_in.tf = 1600*ev.params.t_sf;             % [s], final time
-ev.opt_in.N = int16(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
+%ev.opt_in.tf = 1600*ev.params.t_sf;             % [s], final time
+%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
 
 
 %
@@ -33,9 +33,9 @@ ev.opt_in.N = int16(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete
 %   to produce initial trajectory for solver
 % 
 % Initialize trajectory
-%[t,r0,theta0,v0,fpa0] = ev.gen_traj();
+[t,r0,theta0,v0,fpa0] = ev.gen_traj();
 % save('x0_traj3_N100.mat','t','r0','theta0','v0','fpa0')
-load('x0_traj1600s.mat')
+%load('x0_traj1600s.mat')
 
 % Create initial x vector
 x0 = [r0;theta0;v0;fpa0];
@@ -89,14 +89,15 @@ for k=1:I{1}.k_max
         I{k+1,1}.k = k;
   end
 end
-%}
+
 
 
 lng = length(O);
-ind = 1 % lng - 3;
+ind = 4 % lng - 3;
 ev.plot_traj(O{ind}.t,O{ind}.x)
 
 save('save_data.mat')
+%}
 
 %
 % TODO !
