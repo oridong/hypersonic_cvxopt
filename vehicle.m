@@ -341,9 +341,9 @@ classdef vehicle
                 
                                 
                 % Convert to discrete-time model
-                %dis_sys = c2d(cont_sys,dt);
-                %A_d(r1:r2,:) = double(dis_sys.A);
-                %B_d(r1:r2,1) =  double(dis_sys.B);
+                dis_sys = c2d(cont_sys,dt);
+                A_d(r1:r2,:) = double(dis_sys.A);
+                B_d(r1:r2,1) =  double(dis_sys.B);
                 
                 
                 % TESTING
@@ -352,8 +352,8 @@ classdef vehicle
                 %   which indicates velocity and gamma coupling
                 %   is unstable ... look at dynamics!
                 %   (could also be due to u term...)
-                A_d(r1:r2,:) = eye(n) + dt* double(cont_sys.A );
-                B_d(r1:r2,1) =  dt* double(cont_sys.B );
+                %A_d(r1:r2,:) = eye(n) + dt* double(cont_sys.A );
+                %B_d(r1:r2,1) =  dt* double(cont_sys.B );
             end
             
         end % end linsys_d

@@ -21,11 +21,11 @@ ev = vehicle(sigma0);
 % Problem parameters
 ev.opt_in.dt = 0.08*ev.params.t_sf; 
 
-%ev.opt_in.N = 100;                              % [-], number of discrete points
-%ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
+ev.opt_in.N = 100;                              % [-], number of discrete points
+ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
 
-ev.opt_in.tf = 100*ev.params.t_sf;             % [s], final time
-ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
+%ev.opt_in.tf = 100*ev.params.t_sf;             % [s], final time
+%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
 
 
 % LOOKS GOOD
@@ -99,10 +99,10 @@ end
 
 
 lng = length(O);
-ind = 4 % lng - 3;
+ind = lng - 1;
 ev.plot_traj(O{ind}.t,O{ind}.x)
 
-save('save_data.mat')
+save('matfiles/SUCCESS_7.mat')
 %}
 
 %

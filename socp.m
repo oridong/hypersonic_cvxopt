@@ -43,11 +43,13 @@ function [O] = socp(I,ev,k_sc)
     
     % Solution variables
     variable z(nN,1)
+    variable x(n,N)
+    variable u(1,N)
 
     
     % Minimization problem
     % TODO: Add full linearized cost
-    minimize(real(transpose(c))*z)
+    minimize(real(transpose(c)*z))
     
     % Initial conditions
     %z(1:n,1) == x_i;
@@ -57,18 +59,20 @@ function [O] = socp(I,ev,k_sc)
     %z(end-n+1,end) == x_f;
     
     % Dynamics
-    M*z == F;
-    %{
+    % M*z == F;
+    %%{
     for j=N
         r1 = (j-1)*n + 1;
         r2 = j*n;
+        j_u = n*N + j;
+        
         if j<N
-        %x(:,j+1) - A_d(r1:r2,:)*x(:,j) - B_d(r1:r2,1)*u(:,j) ==  ...
-                                    fx_d(r1:r2) - dt*A_c(r1:r2,:)*x0(:,j);
+        x(:,j+1) - A_d(r1:r2,:)*x(:,j) - B_d(r1:r2,1)*u(:,j) ==  ...
+                       fx_d(r1:r2) - dt*A_c(r1:r2,:)*x0(:,j), - B_d(r1:r2,1)*u0(:,j);
         end
         % Verifying cost is formed via states
-        %z(r1:r2,1) == x(:,j);          
-        
+        z(r1:r2,1) == x(:,j);          
+        z(j_u,1) == u(:,j);
     end
     %}
    
@@ -82,7 +86,7 @@ function [O] = socp(I,ev,k_sc)
     for j=1:N
         j_u = n*N + j;
         
-        %norm(z(j_u,1),2) <= 1000 ;%u_max;
+        norm(z(j_u,1),2) <= 1 ;%u_max;
     end
     
     
@@ -91,7 +95,7 @@ function [O] = socp(I,ev,k_sc)
         r1 = (j-1)*n + 1;
         r2 = j*n;
         I.eps_conv(3) = abs(1/x0(3,j));
-        %norm(z(r1:r2,1) - z0(r1:r2,1)) <= I.delta_tr;
+        norm(z(r1:r2,1) - z0(r1:r2,1)) <= I.delta_tr;
     end
     
     
