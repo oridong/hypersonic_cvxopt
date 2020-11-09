@@ -620,6 +620,145 @@ classdef vehicle
             
         end % end plot_traj
         
+        function plot_bank_sweep(this,fig_h)
+            % Created swept fixed bank angle plots
+            sigma_vec = 0:20:180;
+            for ind=1:length(sigma_vec)
+                %
+                % Select bank angle sigma in degrees!
+                %
+                sigma0 = deg2rad(sigma_vec(ind));      % [rad], initial control
+
+                %
+                % Define and initialize values
+                %
+                % Create vehicle
+                this.ic.u_i = cos(sigma0);
+
+                % Problem parameters
+                this.opt_in.dt = 0.8*this.params.t_sf; 
+                this.opt_in.tf = 2500*this.params.t_sf;             % [s], final time
+                this.opt_in.N = round(this.opt_in.tf/this.opt_in.dt +1);     % [-], number of discrete points
+
+
+                %
+                % Propogate initial conditions with full NL dynamics
+                %   to produce initial trajectory for solver
+                % 
+                % Initialize trajectory
+                [t,r0,theta0,v0,fpa0] = this.gen_traj();
+
+                % Create initial x vector
+                t_vec{ind} = t;
+                x0_vec{ind} = [r0;theta0;v0;fpa0];
+                u0_vec{ind} = this.ic.u_i*ones(1,this.opt_in.N);
+
+                this.opt_in.x0 = x0_vec{ind};
+                this.opt_in.u0 = u0_vec{ind};
+
+                this.plot_traj2(t,x0_vec{ind},u0_vec{ind},fig_h) 
+            end
+            
+            figure(fig_h.Number)   
+            hold all
+            circle(0,0,this.params.R)
+            legend('\sigma=0','\sigma=20','\sigma=40','\sigma=60','\sigma=80',...
+                    '\sigma=100','\sigma=120','\sigma=140','\sigma=160','\sigma=180','Earth')
+
+            figure(fig_h.Number+1)
+            subplot(2,3,4)
+            hold all
+            legend('\sigma=0','\sigma=20','\sigma=40','\sigma=60','\sigma=80',...
+                    '\sigma=100','\sigma=120','\sigma=140','\sigma=160','\sigma=180')
+
+        end %end plot_bank_sweep
+
+                % Plotting 2
+                function plot_traj2(this,t,x0,u0,fig_h)
+                    if nargin == 1
+                        % Initialize inputs
+                        t     = this.opt_in.times;
+                        x0    = this.opt_in.x0;
+                        u0    = this.opt_in.u0;
+                    elseif nargin==3
+                        u0    = this.opt_in.u0;
+                    elseif nargin==4
+                        fig_h = figure;
+                    end
+
+
+                        r0      = x0(1,:)/this.params.r_sf;
+                        theta0  = x0(2,:);
+                        v0      = x0(3,:)/this.params.v_sf;
+                        fpa0    = x0(4,:);
+                        t = t/this.params.t_sf;
+
+                    for i=1:length(theta0)
+                        er(:,i) = this.e_r(theta0(i));
+                        r_vec(:,i) = r0(i)*er(:,i);
+
+                        ev(:,i) = this.e_v(theta0(i),fpa0(i));
+                        v_vec(:,i) = v0(i)*ev(:,i);
+                    end
+
+                    figure(fig_h.Number);
+                    % Plot result 
+                    hold all
+                    plot(r_vec(1,:),r_vec(2,:))
+                    title('Vehicle Approach to Earth')
+                    xlabel('x [km]')
+                    ylabel('y [km]')
+                    xlim([-this.params.R 0]) 
+                    ylim([-this.params.R inf])
+                    %xlim([-inf inf]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
+                    %ylim([0.98*this.params.R,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
+                    %legend('Earths surface')
+
+                    figure(fig_h.Number+1);
+                    subplot(2,3,[1 2])
+                    hold all
+                    plot(t,r0-this.params.R)
+                    title('Vehicle Altitude vs. Time')
+                    xlabel('Time [s]')
+                    ylabel('Altitude [km]')
+                    xlim([-inf inf])
+
+                    subplot(2,3,3)
+                    hold all
+                    plot(t,v0)
+                    title('Vehicle Velocity vs. Time')
+                    xlabel('Time [s]')
+                    ylabel('Velocity [km/s]')
+                    xlim([-inf inf])
+
+                    subplot(2,3,4)
+                    hold all
+                    plot(t,acosd(u0))
+                    ylim([-1,181])
+                    title('Control Input vs. Time')
+                    xlabel('Time [s]')
+                    ylabel('Bank Angle [deg]')
+                    xlim([-inf inf])
+
+
+                    subplot(2,3,5)
+                    hold all
+                    plot(t,rad2deg(theta0))
+                    title('Vehicle Theta vs. Time')
+                    xlabel('Time [s]')
+                    ylabel('Longitude [deg]')
+                    xlim([-inf inf])
+
+                    subplot(2,3,6)
+                    hold all
+                    plot(t,rad2deg(fpa0))
+                    title('Vehicle FPA vs. Time')
+                    xlabel('Time [s]')
+                    ylabel('Flight Path Angle [deg]')
+                    xlim([-inf inf])
+
+                end % end plot_traj2
+        
         
         % Inputs - TODO: Install ECOS
         function I = inputs(this,x0,u0)
