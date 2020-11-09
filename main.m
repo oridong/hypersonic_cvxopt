@@ -10,7 +10,7 @@ addpath('matfiles/')
 %
 % Select bank angle sigma in degrees!
 %
-sigma0 = deg2rad(-20);      % [rad], initial control
+sigma0 = deg2rad(0);      % [rad], initial control
 
 %
 % Define and initialize values
@@ -19,24 +19,19 @@ sigma0 = deg2rad(-20);      % [rad], initial control
 ev = vehicle(sigma0);
 
 % Problem parameters
-%ev.opt_in.dt = 0.01*ev.params.t_sf; 
+ev.opt_in.dt = 0.08*ev.params.t_sf; 
 
 %ev.opt_in.N = 100;                              % [-], number of discrete points
 %ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
 
-%ev.opt_in.tf = 1600*ev.params.t_sf;             % [s], final time
-%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
-
-
-% PADDY
-%ev.opt_in.dt = 0.01*ev.params.t_sf; 
-%ev.opt_in.N = 1e5;                              % [-], number of discrete points
-%ev.opt_in.tf = ev.opt_in.dt*(ev.opt_in.N-1);    % [s], final time
-
-
-ev.opt_in.dt = 0.8*ev.params.t_sf; 
-ev.opt_in.tf = 2500*ev.params.t_sf;             % [s], final time
+ev.opt_in.tf = 100*ev.params.t_sf;             % [s], final time
 ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
+
+
+% LOOKS GOOD
+%ev.opt_in.dt = 0.8*ev.params.t_sf; 
+%ev.opt_in.tf = 2500*ev.params.t_sf;             % [s], final time
+%ev.opt_in.N = double(ev.opt_in.tf/ev.opt_in.dt +1);     % [-], number of discrete points
 
 
 %
