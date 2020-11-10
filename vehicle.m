@@ -96,6 +96,8 @@ classdef vehicle
             m = this.params.m;
             R = this.params.R;
             A = this.params.A;
+            g0 = this.params.g0;
+            H = this.params.H;
             this.fn.L_hdl = @(r,v) (A*R/(2*m)) * this.rho(r) ...
                                                 * v^2 * this.fn.Cl_hdl(v);
 
@@ -114,10 +116,31 @@ classdef vehicle
                                     + u*this.fn.L_hdl(x(1),x(3))/x(3)];
 
             % COST FUNCTION
+            % Min heat rate
             % NOTE : x1=r, x2=theta, x3=v, x4=gamma
             kq = 9.4369e-5;
-            k0 = kq*sqrt(1/this.params.v_sf)^(3.15);
+            sqrtR0g0 = 1/this.params.v_sf;
+            k0 = kq*sqrtR0g0^(3.15);    
+            k0_inv = kq/sqrtR0g0^(3.15);  
             this.fn.cost_hdl = @(x) k0*sqrt(this.fn.rho_hdl(x(1))) * x(3)^3.15;
+            
+            
+            % PATH CONSTRAINTS
+            % NOTE: this.params.v_sf = 1/sqrt(this.params.R*this.params.g0);
+            % Heat rate
+            this.fn.f1_hdl = @(r,v) kq*sqrt(this.rho(r)) * v^(3.15);
+            this.fn.df1_hdl = @(r,v)  [ -0.5*R*k0_inv*v^(3.15) * sqrt(this.rho(r))/H,...
+                                        3.15*k0*v^(2.15) * sqrt(this.rho(r))];
+
+            % Dynamic pressure
+            this.fn.f2_hdl = @(r,v) 0.5 * this.rho(r) * v^2;
+            this.fn.df2_hdl = @(r,v)  [ -0.5*R*this.rho(r)*(v*sqrtR0g0)^2 / H, ...
+                                        sqrtR0g0^2 * this.rho(r) * v];
+
+            % Normal load
+            this.fn.f3_hdl = @(r,v) sqrt(this.fn.D_hdl(r,v)^2 + this.fn.D_hdl(r,v)^2);
+            this.fn.df3_hdl = @(r,v) [ -0.5 * R^2 * A * this.fn.f3_hdl(r,v) * this.rho(r) * v^2 /(m*H),...
+                                        R * A * this.fn.f3_hdl(r,v) * this.rho(r) * v / m]; 
 
 
             %%
@@ -151,15 +174,15 @@ classdef vehicle
             % Convergence params
             this.opt_in.k_max = 20;                     % max number of successive iterations
             this.opt_in.lcvx_tol = 1e-2;                % losslessness tolerance [N]
-            this.opt_in.eps_conv = [ 100/R;...  % convergence tolerance
+            this.opt_in.eps_conv = [ 0.1/R;...  % convergence tolerance
                                      deg2rad(0.05);...
-                                     1/this.ic.v_i;...
+                                     0.001/(this.ic.v_i/this.params.v_sf);...
                                      deg2rad(0.05)];
             
             % Trust region params
-            this.opt_in.delta_tr = [ 1e4/R;...  % trust region convergence tolerance
+            this.opt_in.delta_tr = [ 10/R;...  % trust region convergence tolerance
                                      deg2rad(20);...
-                                     500/this.ic.v_i;...
+                                     5/(this.ic.v_i/this.params.v_sf);...
                                      deg2rad(20)];
             
             
@@ -176,6 +199,11 @@ classdef vehicle
             % TODO: Fix this terminal BC
             this.opt_in.x_i = this.ic.x_i; % Initial BC
             this.opt_in.x_f = 0; % terminal BC
+            
+            % Constraint limits
+            this.opt_in.f1max = 1500*(1000)^2;  % [kW/km^2], max heat rate
+            this.opt_in.f2max = 18,000*(1000)^2;% [N/km^2], max q 
+            this.opt_in.f3max = 2.5*g0; % [km/s^], max load
 
         end % end constructor
       
@@ -444,6 +472,82 @@ classdef vehicle
         end
         
         
+        function [f1,df1,f2,df2,f3,df3] = path_constr(this,x0)
+            [n,N] = size(x0);
+            
+            for j = 1:N
+                % Pull out r and v
+                r = x0(1,j);
+                v = x0(3,j);
+                
+                %
+                % Heat rate
+                %
+                f1(j,1) = this.fn.f1_hdl(r,v);
+                df1(j,:) = this.fn.df1_hdl(r,v);
+                
+                
+                if isinf(f1(j,1))
+                    f1(j,1) = sign(f1(j,1)) / eps;
+                end
+                
+                if isinf(df1(j,1))
+                    df1(j,1) = sign(df1(j,1)) / eps;
+                end
+                
+                if isinf(df1(j,2))
+                    df1(j,2) = sign(df1(j,2)) / eps;
+                end
+
+                %
+                % Dynamic pressure
+                %
+                f2(j,1) = this.fn.f2_hdl(r,v);
+                df2(j,:) = this.fn.df2_hdl(r,v);
+                
+                
+                if isinf(f2(j,1))
+                    f2(j,1) = sign(f2(j,1)) / eps;
+                end
+                
+                if isinf(df2(j,1))
+                    df2(j,1) = sign(df2(j,1)) / eps;
+                end
+                
+                if isinf(df2(j,2))
+                    df2(j,2) = sign(df2(j,2)) / eps;
+                end
+                
+
+                %
+                % Normal load
+                %
+                f3(j,1) = this.fn.f3_hdl(r,v);
+                df3(j,:) = this.fn.df3_hdl(r,v);
+                
+                
+                if isinf(f3(j,1))
+                    f3(j,1) = sign(f3(j,1)) / eps;
+                end
+                
+                if isinf(df3(j,1))
+                    df3(j,1) = sign(df3(j,1)) / eps;
+                end
+                
+                if isinf(df3(j,2))
+                    df3(j,2) = sign(df3(j,2)) / eps;
+                end
+                
+                f1 = real(f1); 
+                df1 = real(df1);
+                f2 = real(f2); 
+                df2 = real(df2);
+                f3 = real(f3);
+                df3 = real(df3);
+            end    
+        end
+        
+        
         % Reorganize cost and constraints into 
         function [c,z0,M,F] = restack(this,x0,u0,dJ_d,A_d,B_d,fx_d,A_c,dt,N,n)
             if nargin==7
@@ -566,7 +670,7 @@ classdef vehicle
             % Plot result 
             subplot(2,3,1)
             hold all
-            circle(0,0,this.params.R)
+            circle(0,0,this.params.R);
             hold all
             plot(r_vec(1,:),r_vec(2,:))
             title('Vehicle Approach to Earth')
@@ -574,8 +678,6 @@ classdef vehicle
             ylabel('y [km]')
             xlim([-this.params.R 0]) 
             ylim([-this.params.R inf])
-            %xlim([-inf inf]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
-            %ylim([0.98*this.params.R,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
             legend('Earths surface')
 
             subplot(2,3,2)
@@ -777,6 +879,11 @@ classdef vehicle
             % Initialization Trajectory
             this.opt_in.x0 = x0;
             this.opt_in.u0 = u0*ones(1,int64(this.opt_in.N));
+            
+            % Control constraints
+            this.opt_in.u_max = cosd(0);
+            this.opt_in.u_min = cosd(80);
+            
             
             I = this.opt_in;
             

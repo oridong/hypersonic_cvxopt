@@ -10,12 +10,18 @@ function [O] = socp(I,ev,k_sc)
     N = double(I.N);
     n = I.n;
     nN = double(N*(n+1));
+    R = I.R;
+    r_scale = ev.params.r_sf;
     
     u_min = I.u_min;
     u_max = I.u_max;
     
+    f1max = I.f1max;
+    f2max = I.f2max;
+    f3max = I.f3max;
+    
     x_i = I.x_i;
-    %x_f = I.x_f;
+    x_f = I.x0(:,N);
 
     x0 = I.x0;  
     u0 = I.u0;
@@ -26,6 +32,8 @@ function [O] = socp(I,ev,k_sc)
     
     [J_c, dJ_c] = ev.cost_c(ev.opt_in.J_sym,ev.opt_in.dJ_sym,x0);
     [J_d, dJ_d] = ev.cost_d(J_c,dJ_c);
+    
+    [f1,df1,f2,df2,f3,df3] = ev.path_constr(x0);
     
     fprintf('Finished with linearization!\n\n')
     
@@ -42,60 +50,83 @@ function [O] = socp(I,ev,k_sc)
     cvx_quiet(I.cvx_quiet)
     
     % Solution variables
-    variable z(nN,1)
+    %variable z(nN,1)
     variable x(n,N)
     variable u(1,N)
+    variable cost(1,N)
 
     
     % Minimization problem
     % TODO: Add full linearized cost
-    minimize(real(transpose(c)*z))
+    % minimize(real(transpose(c)*z))
+    minimize(sum(cost))
+    
+    for j=1:N
+        r1 = (j-1)*n + 1;
+        r2 = j*n;
+        cost(j) == real(transpose(c(r1:r2)))*x(:,j);
+    end
     
     % Initial conditions
-    norm(z(1,1)) <= x_i(1);
+    %z(1,1) <= x_i(1);
+    %1 <= z(1,1);
+    x(:,1) == x_i;
+    
     
     % Final conditions
     % TODO: Select sensible final conditions
-    %z(1,end) == x_f;
+    %x(:,N) == x_f;
     
     % Dynamics
     % M*z == F;
     %%{
     for j=N
-        r1 = (j-1)*n + 1;
-        r2 = j*n;
-        j_u = n*N + j;
+        %r1 = (j-1)*n + 1;
+        %r2 = j*n;
+        %j_u = n*N + j;
         
         if j<N
         x(:,j+1) - A_d(r1:r2,:)*x(:,j) - B_d(r1:r2,1)*u(:,j) ==  ...
-                       fx_d(r1:r2) - dt*A_c(r1:r2,:)*x0(:,j), - B_d(r1:r2,1)*u0(:,j);
+                       fx_c(r1:r2) - A_d(r1:r2,:)*x0(:,j) - B_d(r1:r2,1)*u0(:,j);
         end
         % Verifying cost is formed via states
-        z(r1:r2,1) == x(:,j);          
-        z(j_u,1) == u(:,j);
+        %z(r1:r2,1) == x(:,j);          
+        %z(j_u,1) == u(:,j);
+        
+        % State constraints
+        %norm(x(1,j)) <= ev.ic.r_i;
+        %1 <= x(1,j);
+        %norm(x(3,j)) <= 1.2;
     end
     %}
    
     
     % State constraints
     %for jz=1:nN
-    %    norm(z(jz)) <= 1000;
-    % end
+        %norm(z(jz)) <= z0(1);
+    %end
     
     % Control constraints
     for j=1:N
-        j_u = n*N + j;
-        
-        norm(z(j_u,1),2) <= 1 ;%u_max;
+        %j_u = n*N + j;
+        %norm(z(j_u,1),2) <= 1 ;%u_max;
+    %    u_min <= u(1,j) <= u_max;
+        norm(u(1,j)) <= 1
     end
     
+    % Path constraints
+    %for j=1:N
+    %    f1 + df1(j,1)*(x(1,j)-x0(1,j)) + df1(j,2)*(x(3,j)-x0(3,j)) <= f1max;
+        f2 + df2(j,1)*(x(1,j)-x0(1,j)) + df2(j,2)*(x(3,j)-x0(3,j)) <= f2max;
+    %    f3 + df3(j,1)*(x(1,j)-x0(1,j)) + df3(j,2)*(x(3,j)-x0(3,j)) <= f3max;
+    %end
     
     % Trust region constraints
     for j=1:N
-        r1 = (j-1)*n + 1;
-        r2 = j*n;
         I.eps_conv(3) = abs(1/x0(3,j));
-        norm(z(r1:r2,1) - z0(r1:r2,1)) <= I.delta_tr;
+        for ind = 1:n
+           norm(x(n,j) - x0(n,j)) <= I.delta_tr(n); 
+        end
     end
     
     
@@ -105,15 +136,15 @@ function [O] = socp(I,ev,k_sc)
     %
     
     % Pull out x from z
-    x = z(1:n*N);
-    x = reshape(x,[n,N]);
-    u = z0(n*N+1:end)';
+    %x = z(1:n*N);
+    %x = reshape(x,[n,N]);
+    %u = z(n*N+1:end)';
     
     
     % Convergence check
     for i=1:n
         for j=1:N 
-        conv_check(i,j) = norm(x(i,j) - x0(i,j)); 
+            conv_check(i,j) = norm(x(i,j) - x0(i,j)); 
         end 
         [conv_max(i,1) idx(i,1)] = max(conv_check(i,:));
     end
@@ -126,7 +157,8 @@ function [O] = socp(I,ev,k_sc)
     O.t = linspace(0,tf,N);
     O.x = full(x);
     O.u = full(u);
-    O.cost = transpose(c)*z;
+    %O.z = full(z);
+    O.cost = full(cost); % transpose(c)*z;
     O.converged = min(converged_bool); %O.converged = min(min(O.x - x0 < I.eps_conv));
     O.status = cvx_status;
     O.timing = cvx_toc;

@@ -10,7 +10,7 @@ addpath('matfiles/')
 %
 % Select bank angle sigma in degrees!
 %
-sigma0 = deg2rad(180);      % [rad], initial control
+sigma0 = deg2rad(0);      % [rad], initial control
 
 % Create vehicle
 ev = vehicle(sigma0);
@@ -18,16 +18,16 @@ ev = vehicle(sigma0);
 %
 % Define and initialize values
 %
-dt = 0.08*ev.params.t_sf;
+dt = 0.08*ev.params.t_sf; %0.08*ev.params.t_sf;
 
-N = 1000;
+N = 500;
 tf = dt*(N-1);
 
-%tf = 100*ev.params.t_sf;             % [s], final time
+%tf = 500*ev.params.t_sf;             % [s], final time
 %N = round(tf/dt +1);     % [-], number of discrete points
 
 % LOOKS GOOD
-%dt = 0.8*ev.params.t_sf; 
+%dt = 0.08*ev.params.t_sf; 
 %tf = 2500*ev.params.t_sf;             % [s], final time
 %N = round(tf/dt +1);     % [-], number of discrete points
 
@@ -100,12 +100,12 @@ for k=1:I{1}.k_max
 end
 
 
-
+shift = 0;
 lng = length(O);
-ind = lng - 1;
+ind = lng - shift;
 ev.plot_traj(O{ind}.t,O{ind}.x,O{ind}.u)
 
-save('matfiles/SUCCESS_9.mat')
+save('matfiles/SUCCESS_16.mat')
 %}
 
 %
