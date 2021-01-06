@@ -1,5 +1,6 @@
 % Skye Mceowen
 % Qualifying Exam SOCP subproblem solver
+% Hypersonic Reentry Vehicle Optimal Traj Gen
 % Nov 6, 2020
 
 function [O] = socp(I,ev,k_sc)    

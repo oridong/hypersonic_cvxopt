@@ -1,5 +1,6 @@
 % Skye Mceowen
 % Qualifying Exam Vehicle Class Defition
+% Hypersonic Reentry
 % Nov6, 2020
 
 classdef vehicle
