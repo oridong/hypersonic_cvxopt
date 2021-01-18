@@ -72,7 +72,10 @@ function xDot = dynamics_wang(t,x,sigma,T)
     
     mDot = -T/(Isp*g0);
     
+    %QDot is for the cost!
+    QDot = (9.4369e-5)*sqrt(rho)*V^(3.05);
+    
     % Stack into state propogation vector
-    xDot = [rDot; thetaDot; phiDot; vDot; gammaDot; psiDot; mDot];
+    xDot = [rDot; thetaDot; phiDot; vDot; gammaDot; psiDot; mDot; QDot];
 
 end
