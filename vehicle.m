@@ -14,6 +14,7 @@ classdef vehicle
         ic = struct;
         opt_in = struct;
         opt_out = struct;
+        sysdyn = vehicle_dynamics;
         
         % Functions
         fn = struct;
@@ -71,19 +72,30 @@ classdef vehicle
             %
             % Function handles
             %
+            %TODO: Fix piecewise things later
+            
+            
             % RHO
             this.fn.h = @(r) r/this.params.r_sf - this.params.R;
-            this.fn.rho_hdl = @(r) piecewise(r > 1, ... if
-                                               this.params.rho0*exp(-this.fn.h(r)/this.params.H),...
-                                            r <= 1, ... elseif
-                                               this.params.rho0);
+            this.fn.rho_hdl = @(r) this.params.rho0*exp(-this.fn.h(r)/this.params.H);
+                            %{
+                            = @(r) piecewise(r > 1, ... if
+                                           this.params.rho0*exp(-this.fn.h(r)/this.params.H),...
+                                        r <= 1, ... elseif
+                                           this.params.rho0);
+                            %}
                                         
                                         
             % ALPHA                    
-            this.fn.alpha_hdl = @(v) piecewise(v>4.570, ... if
-                                                    40,... then
-                                                v<=4.570, ... elseif
-                                                    40-0.20705*(1000*v-4570)^2/(340^2)); % then  
+            this.fn.alpha_hdl = @(v) 40 - 0.20705*(1000*v-4570)^2/(340^2); 
+                            %{
+                            = @(v) piecewise(v>4.570, ... if
+                                                40,... then
+                                            v<=4.570, ... elseif
+                                                40-0.20705*(1000*v-4570)^2/(340^2)); % then  
+                            %}
+            
+            
             % LIFT COEFFICIENT    
             this.fn.Cl_hdl = @(v) -0.041065 ...
                                     + 0.016292*this.alpha(v) ...
@@ -154,21 +166,21 @@ classdef vehicle
             this.opt_in.dt = this.opt_in.tf/(this.opt_in.N - 1);
 
 
-            [Asym, Bsym] = linsys_sym(this);
-            this.opt_in.A_sym = Asym;
-            this.opt_in.B_sym = Bsym;
+            [Ahdl, Bhdl] = linsys_sym(this);
+            this.opt_in.A_hdl = Ahdl;
+            this.opt_in.B_hdl = Bhdl;
             
             % TODO: Add cost fcn values
-            [Jsym, dJsym] = cost_sym(this);
-            this.opt_in.J_sym = Jsym;
-            this.opt_in.dJ_sym = dJsym;
+            [Jhdl, dJhdl] = cost_sym(this);
+            this.opt_in.J_hdl = Jhdl;
+            this.opt_in.dJ_hdl = dJhdl;
             
             this.opt_in.x0 = this.ic.x_i;
             this.opt_in.u0 = this.ic.u_i;
             
             % CVX params
             % TODO: Install ECOS
-            %I.cvx_solver = 'ecos';             % solver
+            %this.opt_in.cvx_solver = 'ecos';             % solver
             this.opt_in.cvx_precision = 'low';  % precision
             this.opt_in.cvx_quiet = true;       % cvx print option
             
@@ -233,14 +245,14 @@ classdef vehicle
             % Check if numeric
             if isnumeric(r)                                     
                 if norm(r)>1
-                    rho = this.params.rho0*exp(-this.fn.h(r)/this.params.H);
+                    rho = this.fn.rho_hdl(r);
                 else
                     rho = this.params.rho0;
                 end
            
             % Otherwise, if symbolic:
             else
-                rho = this.fn.rho_hdl(r); 
+               rho = this.fn.rho_hdl(r); 
             end
         end % end fx
 
@@ -248,9 +260,9 @@ classdef vehicle
            % Check if numeric
             if isnumeric(v)                                     
                 if norm(v)>4.570
-                    alpha=40;
+                    alpha = 40;
                 else
-                    alpha=40-0.20705*(1000*v-4570)^2/(340^2);
+                    alpha = this.fn.alpha_hdl(v);
                 end
            
             % Otherwise, if symbolic:
@@ -271,7 +283,7 @@ classdef vehicle
         
         
         % Determine symbolic linearized A matrix
-        function [A_sym, B_sym] = linsys_sym(this)
+        function [A_hdl, B_hdl] = linsys_sym(this)
             % Create symbolic values
             n = this.opt_in.n;
             syms u
@@ -283,10 +295,14 @@ classdef vehicle
             % Compute Jacobian matrices
             A_sym = jacobian(derivs,x);
             B_sym = jacobian(derivs,u);
+            
+            A_hdl = matlabFunction(A_sym,'Vars', {[x; u]});
+            B_hdl = matlabFunction(B_sym,'Vars', {[x; u]});
         end % end linsys_sym
         
         
         % Numerical A,B values for continuous time dynamics
+        %{
         function [A_c, B_c, fx_c] = linsys_c(this,A_sym,B_sym,...
                                                 x0,u0,N,n)
                                     
@@ -324,7 +340,7 @@ classdef vehicle
                       end
                    end
 
-                   % Replace divide by zero errors with eps for A
+                   % Replace divide by zero errors with eps for B
                    [Bnum,Bdenom] = numden(B_sym(i1,1));
                    Bdiv0 = (double(subs(Bdenom,[x; u],[x0(:,j); u0(j)]))==0.0);
                    if Bdiv0
@@ -339,6 +355,59 @@ classdef vehicle
                 
                 % Determine continuous time numerical B matrix
                 B_c(r1:r2,1) = double(subs(B_sym,[x; u],[x0(:,j); u0(j)]));
+            end % end for j=1:N
+            
+        end
+        %}
+        function [A_c, B_c, fx_c] = linsys_c(this,A_hdl, B_hdl,...
+                                                x0,u0,N,n)
+                                    
+            % Set number of temporal nodes N if not given
+            if nargin==5
+               [n, N] = size(x0);
+               opt_in.N = N; % temporal nodes
+               opt_in.n = n; % length of state vector
+            end 
+
+            
+            % Loop through all temporal nodes
+            for j=1:N
+                % Get proper indices for stacking A matrices at each node
+                r1 = (j-1)*n + 1;
+                r2 = j*n;
+                
+                % Determine continuous time numerical fx
+                fx_c(r1:r2,:) = this.fx(x0(:,j),u0(j));
+                
+                
+                % Determine continuous time numerical A matrix
+                Amat = A_hdl([x0(:,j); u0(j)]);
+                
+                
+                % Determine continuous time numerical B matrix
+                Bmat = B_hdl([x0(:,j); u0(j)]);
+                
+                
+                % Remove Inf and NaN values
+                for row=1:n
+                    if isinf(Bmat(row))
+                        Bmat(row) = 1 / eps;
+                    elseif isnan(Bmat(row))
+                        Bmat(row) = 0;
+                    end 
+                    for col=1:n 
+                        if isinf(Amat(row,col))
+                            Amat(row,col) = 1 / eps;
+                        elseif isnan(Amat(row,col))
+                            Amat(row,col) = 0;
+                        end 
+                    end
+                end
+                
+                
+                % Set matrices
+                A_c(r1:r2,:) = Amat;
+                B_c(r1:r2,1) = Bmat;
             end % end for j=1:N
             
         end
@@ -387,35 +456,24 @@ classdef vehicle
             
         end % end linsys_d
         
-        % Nonlinear cost as a function of state
-        function cost = cost(this,x_in)
-            % Check if numeric
-            if isnumeric(x_in)
-                x = sym('x',[6,1]);
-                cost_sym = this.fn.cost_hdl(x);
-                cost = double(subs(cost_sym,x,x_in));
-
-            % Otherwise, if symbolic:
-            else
-                cost = this.fn.cost_hdl(x_in); 
-            end
-        end % end cost
         
         % Determine symbolic linearized cost
-        function [cost_sym, dcost_sym] = cost_sym(this)
+        function [cost_hdl, dcost_hdl] = cost_sym(this)
             % Create symbolic values
             n = this.opt_in.n;
             x = sym('x',[n 1]);
            
             % Create symbolic derivatives vector
-            cost_sym = this.cost(x);
+            cost_sym = this.fn.cost_hdl(x);
+            cost_hdl = this.fn.cost_hdl;
            
             % Compute Jacobian matrices
             dcost_sym = jacobian(cost_sym,x);
+            dcost_hdl = matlabFunction(dcost_sym, 'Vars', {x});
         end % end cost_sym
         
         % Numerical continuous cost
-        function [J_c, dJ_c] = cost_c(this,J_sym,dJ_sym,x0,N,n)
+        function [J_c, dJ_c] = cost_c(this,J_hdl,dJ_hdl,x0,N,n)
             % Set number of temporal nodes N if not given
             if nargin==4
                [n, N] = size(x0);
@@ -423,42 +481,19 @@ classdef vehicle
                opt_in.n = n; % length of state vector
             end 
             
-            % Set up symbols for substitution
-            x = sym('x',[n,1]);
-
-            % Loop through all temporal nodes
+            
             for j=1:N
                 % Get proper indices for stacking A matrices at each node
                 r1 = (j-1)*n + 1;
                 r2 = j*n;
 
-                % Verify divide by zero error
-
-                % Replace divide by zero errors with eps for J
-                [Jnum,Jdenom] = numden(J_sym);
-                Jdiv0 = (double(subs(Jdenom,x,x0(:,j)))==0.0);
-
-                if Jdiv0
-                     fprintf('Divide by zero error in cost, replacing with eps!\n' )
-                     J_sym = Jnum / eps;
-                end
-
-                for i1=1:n
-                    % Replace divide by zero errors with eps for dJ
-                    [dJnum,dJdenom] = numden(dJ_sym(i1));
-                    dJdiv0 = (double(subs(dJdenom,x,x0(:,j)))==0.0);
-                    if dJdiv0
-                        fprintf('Divide by zero error in cost deriv, replacing with eps!\n' )
-                        dJ_sym(i1) = dJnum / eps;
-                    end
-                end
 
                 % Determine continuous time numerical A matrix
-                J_c(j,1) = double(subs(J_sym,x,x0(:,j)));
+                J_c(j,1) = J_hdl(x0(:,j));
 
 
                 % Determine continuous time numerical B matrix
-                dJ_c(1,r1:r2) = double(subs(dJ_sym,x,x0(:,j)));
+                dJ_c(1,r1:r2) = dJ_hdl(x0(:,j));
             end
         end
         
@@ -779,90 +814,90 @@ classdef vehicle
         end %end plot_bank_sweep
 
                 % Plotting 2
-                function plot_traj2(this,t,x0,u0,fig_h)
-                    if nargin == 1
-                        % Initialize inputs
-                        t     = this.opt_in.times;
-                        x0    = this.opt_in.x0;
-                        u0    = this.opt_in.u0;
-                    elseif nargin==3
-                        u0    = this.opt_in.u0;
-                    elseif nargin==4
-                        fig_h = figure;
-                    end
+        function plot_traj2(this,t,x0,u0,fig_h)
+            if nargin == 1
+                % Initialize inputs
+                t     = this.opt_in.times;
+                x0    = this.opt_in.x0;
+                u0    = this.opt_in.u0;
+            elseif nargin==3
+                u0    = this.opt_in.u0;
+            elseif nargin==4
+                fig_h = figure;
+            end
 
 
-                        r0      = x0(1,:)/this.params.r_sf;
-                        theta0  = x0(2,:);
-                        v0      = x0(3,:)/this.params.v_sf;
-                        fpa0    = x0(4,:);
-                        t = t/this.params.t_sf;
+                r0      = x0(1,:)/this.params.r_sf;
+                theta0  = x0(2,:);
+                v0      = x0(3,:)/this.params.v_sf;
+                fpa0    = x0(4,:);
+                t = t/this.params.t_sf;
 
-                    for i=1:length(theta0)
-                        er(:,i) = this.e_r(theta0(i));
-                        r_vec(:,i) = r0(i)*er(:,i);
+            for i=1:length(theta0)
+                er(:,i) = this.e_r(theta0(i));
+                r_vec(:,i) = r0(i)*er(:,i);
 
-                        ev(:,i) = this.e_v(theta0(i),fpa0(i));
-                        v_vec(:,i) = v0(i)*ev(:,i);
-                    end
+                ev(:,i) = this.e_v(theta0(i),fpa0(i));
+                v_vec(:,i) = v0(i)*ev(:,i);
+            end
 
-                    figure(fig_h.Number);
-                    % Plot result 
-                    hold all
-                    plot(r_vec(1,:),r_vec(2,:))
-                    title('Vehicle Approach to Earth')
-                    xlabel('x [km]')
-                    ylabel('y [km]')
-                    xlim([-this.params.R 0]) 
-                    ylim([-this.params.R inf])
-                    %xlim([-inf inf]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
-                    %ylim([0.98*this.params.R,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
-                    %legend('Earths surface')
+            figure(fig_h.Number);
+            % Plot result 
+            hold all
+            plot(r_vec(1,:),r_vec(2,:))
+            title('Vehicle Approach to Earth')
+            xlabel('x [km]')
+            ylabel('y [km]')
+            xlim([-this.params.R 0]) 
+            ylim([-this.params.R inf])
+            %xlim([-inf inf]) %xlim([min(r_vec(1,:)),max(r_vec(1,:))])
+            %ylim([0.98*this.params.R,1.001*max(r_vec(2,:))]) %ylim([min(r_vec(2,:)),max(r_vec(2,:))])
+            %legend('Earths surface')
 
-                    figure(fig_h.Number+1);
-                    subplot(2,3,[1 2])
-                    hold all
-                    plot(t,r0-this.params.R)
-                    title('Vehicle Altitude vs. Time')
-                    xlabel('Time [s]')
-                    ylabel('Altitude [km]')
-                    xlim([-inf inf])
+            figure(fig_h.Number+1);
+            subplot(2,3,[1 2])
+            hold all
+            plot(t,r0-this.params.R)
+            title('Vehicle Altitude vs. Time')
+            xlabel('Time [s]')
+            ylabel('Altitude [km]')
+            xlim([-inf inf])
 
-                    subplot(2,3,3)
-                    hold all
-                    plot(t,v0)
-                    title('Vehicle Velocity vs. Time')
-                    xlabel('Time [s]')
-                    ylabel('Velocity [km/s]')
-                    xlim([-inf inf])
+            subplot(2,3,3)
+            hold all
+            plot(t,v0)
+            title('Vehicle Velocity vs. Time')
+            xlabel('Time [s]')
+            ylabel('Velocity [km/s]')
+            xlim([-inf inf])
 
-                    subplot(2,3,4)
-                    hold all
-                    plot(t,acosd(u0))
-                    ylim([-1,181])
-                    title('Control Input vs. Time')
-                    xlabel('Time [s]')
-                    ylabel('Bank Angle [deg]')
-                    xlim([-inf inf])
+            subplot(2,3,4)
+            hold all
+            plot(t,acosd(u0))
+            ylim([-1,181])
+            title('Control Input vs. Time')
+            xlabel('Time [s]')
+            ylabel('Bank Angle [deg]')
+            xlim([-inf inf])
 
 
-                    subplot(2,3,5)
-                    hold all
-                    plot(t,rad2deg(theta0))
-                    title('Vehicle Theta vs. Time')
-                    xlabel('Time [s]')
-                    ylabel('Longitude [deg]')
-                    xlim([-inf inf])
+            subplot(2,3,5)
+            hold all
+            plot(t,rad2deg(theta0))
+            title('Vehicle Theta vs. Time')
+            xlabel('Time [s]')
+            ylabel('Longitude [deg]')
+            xlim([-inf inf])
 
-                    subplot(2,3,6)
-                    hold all
-                    plot(t,rad2deg(fpa0))
-                    title('Vehicle FPA vs. Time')
-                    xlabel('Time [s]')
-                    ylabel('Flight Path Angle [deg]')
-                    xlim([-inf inf])
+            subplot(2,3,6)
+            hold all
+            plot(t,rad2deg(fpa0))
+            title('Vehicle FPA vs. Time')
+            xlabel('Time [s]')
+            ylabel('Flight Path Angle [deg]')
+            xlim([-inf inf])
 
-                end % end plot_traj2
+        end % end plot_traj2
         
         
         % Inputs - TODO: Install ECOS

@@ -19,7 +19,6 @@ ev = vehicle(sigma0);
 % Define and initialize values
 %
 dt = 0.08*ev.params.t_sf; %0.08*ev.params.t_sf;
-
 N = 500;
 tf = dt*(N-1);
 
@@ -30,6 +29,12 @@ tf = dt*(N-1);
 %dt = 0.08*ev.params.t_sf; 
 %tf = 2500*ev.params.t_sf;             % [s], final time
 %N = round(tf/dt +1);     % [-], number of discrete points
+
+
+% Debugging
+%dt = 0.1*ev.params.t_sf; %0.08*ev.params.t_sf;
+%N = 50;
+%tf = dt*(N-1);
 
 % Problem parameters
 ev.opt_in.dt = dt; 
@@ -65,7 +70,12 @@ I = {I};
 O = cell(0,1);
 solve_time = 0;
 
+% Debugging dynamics with sym lib
+close all
+n = ev.opt_in.n;
 
+
+%%{
 % Sequential SOCP Loop
 for k=1:I{1}.k_max
     O{k,1} = socp(I{k,1},ev,k);

@@ -28,10 +28,10 @@ function [O] = socp(I,ev,k_sc)
     u0 = I.u0;
     
     % Pull out linearized matrices and cost, discretize
-    [A_c, B_c, fx_c] = ev.linsys_c(ev.opt_in.A_sym,ev.opt_in.B_sym,x0,u0,N,n);    
+    [A_c, B_c, fx_c] = ev.linsys_c(ev.opt_in.A_hdl,ev.opt_in.B_hdl,x0,u0,N,n);    
     [A_d, B_d, fx_d] = ev.linsys_d(A_c,B_c,fx_c);
-    
-    [J_c, dJ_c] = ev.cost_c(ev.opt_in.J_sym,ev.opt_in.dJ_sym,x0);
+
+    [J_c, dJ_c] = ev.cost_c(ev.opt_in.J_hdl,ev.opt_in.dJ_hdl,x0);
     [J_d, dJ_d] = ev.cost_d(J_c,dJ_c);
     
     [f1,df1,f2,df2,f3,df3] = ev.path_constr(x0);
@@ -60,7 +60,8 @@ function [O] = socp(I,ev,k_sc)
     % Minimization problem
     % TODO: Add full linearized cost
     % minimize(real(transpose(c)*z))
-    minimize(sum(cost))
+    % minimize(sum(cost))
+    minimize(0)
     
     for j=1:N
         r1 = (j-1)*n + 1;
