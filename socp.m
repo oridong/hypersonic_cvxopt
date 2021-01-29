@@ -63,11 +63,11 @@ function [O] = socp(I,ev,k_sc)
     % minimize(sum(cost))
     minimize(0)
     
-    for j=1:N
-        r1 = (j-1)*n + 1;
-        r2 = j*n;
-        cost(j) == real(transpose(c(r1:r2)))*x(:,j);
-    end
+    %for j=1:N
+    %    r1 = (j-1)*n + 1;
+    %    r2 = j*n;
+    %    cost(j) == real(transpose(c(r1:r2)))*x(:,j);
+    %end
     
     % Initial conditions
     %z(1,1) <= x_i(1);
