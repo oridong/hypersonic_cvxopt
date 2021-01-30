@@ -119,7 +119,7 @@ function [O] = socp(I,ev,k_sc)
     % Path constraints
     %for j=1:N
     %    f1 + df1(j,1)*(x(1,j)-x0(1,j)) + df1(j,2)*(x(3,j)-x0(3,j)) <= f1max;
-        f2 + df2(j,1)*(x(1,j)-x0(1,j)) + df2(j,2)*(x(3,j)-x0(3,j)) <= f2max;
+    %    f2 + df2(j,1)*(x(1,j)-x0(1,j)) + df2(j,2)*(x(3,j)-x0(3,j)) <= f2max;
     %    f3 + df3(j,1)*(x(1,j)-x0(1,j)) + df3(j,2)*(x(3,j)-x0(3,j)) <= f3max;
     %end
     

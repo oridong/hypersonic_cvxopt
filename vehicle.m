@@ -14,10 +14,10 @@ classdef vehicle
         ic = struct;
         opt_in = struct;
         opt_out = struct;
-        sysdyn = vehicle_dynamics;
         
         % Functions
         fn = struct;
+        sysdyn = vehicle_dynamics;
     end
     
 
@@ -72,7 +72,7 @@ classdef vehicle
             %
             % Function handles
             %
-            %TODO: Fix piecewise things later
+            % TODO: Fix piecewise things later
             
             
             % RHO
@@ -98,8 +98,8 @@ classdef vehicle
             
             % LIFT COEFFICIENT    
             this.fn.Cl_hdl = @(v) -0.041065 ...
-                                    + 0.016292*this.alpha(v) ...
-                                    + 0.0002602*(this.alpha(v)^2);
+                                    + 0.016292*this.fn.alpha_hdl(v) ...
+                                    + 0.0002602*(this.fn.alpha_hdl(v)^2);
             % DRAG COEFFICIENT
             this.fn.Cd_hdl = @(v) 0.080505 ...
                                     - 0.03026*this.fn.Cl_hdl(v) ...
@@ -111,11 +111,11 @@ classdef vehicle
             A = this.params.A;
             g0 = this.params.g0;
             H = this.params.H;
-            this.fn.L_hdl = @(r,v) (A*R/(2*m)) * this.rho(r) ...
+            this.fn.L_hdl = @(r,v) (A*R/(2*m)) * this.fn.rho_hdl(r) ...
                                                 * v^2 * this.fn.Cl_hdl(v);
 
             % DRAG
-            this.fn.D_hdl = @(r,v) (A*R/(2*m)) * this.rho(r) ...
+            this.fn.D_hdl = @(r,v) (A*R/(2*m)) * this.fn.rho_hdl(r) ...
                                                 * v^2 * this.fn.Cd_hdl(v);
 
 
@@ -141,19 +141,19 @@ classdef vehicle
             % PATH CONSTRAINTS
             % NOTE: this.params.v_sf = 1/sqrt(this.params.R*this.params.g0);
             % Heat rate
-            this.fn.f1_hdl = @(r,v) kq*sqrt(this.rho(r)) * v^(3.15);
-            this.fn.df1_hdl = @(r,v)  [ -0.5*R*k0_inv*v^(3.15) * sqrt(this.rho(r))/H,...
-                                        3.15*k0*v^(2.15) * sqrt(this.rho(r))];
+            this.fn.f1_hdl = @(r,v) kq*sqrt(this.fn.rho_hdl(r)) * v^(3.15);
+            this.fn.df1_hdl = @(r,v)  [ -0.5*R*k0_inv*v^(3.15) * sqrt(this.fn.rho_hdl(r))/H,...
+                                        3.15*k0*v^(2.15) * sqrt(this.fn.rho_hdl(r))];
 
             % Dynamic pressure
-            this.fn.f2_hdl = @(r,v) 0.5 * this.rho(r) * v^2;
-            this.fn.df2_hdl = @(r,v)  [ -0.5*R*this.rho(r)*(v*sqrtR0g0)^2 / H, ...
-                                        sqrtR0g0^2 * this.rho(r) * v];
+            this.fn.f2_hdl = @(r,v) 0.5 * this.fn.rho_hdl(r) * v^2;
+            this.fn.df2_hdl = @(r,v)  [ -0.5*R*this.fn.rho_hdl(r)*(v*sqrtR0g0)^2 / H, ...
+                                        sqrtR0g0^2 * this.fn.rho_hdl(r) * v];
 
             % Normal load
             this.fn.f3_hdl = @(r,v) sqrt(this.fn.D_hdl(r,v)^2 + this.fn.D_hdl(r,v)^2);
-            this.fn.df3_hdl = @(r,v) [ -0.5 * R^2 * A * this.fn.f3_hdl(r,v) * this.rho(r) * v^2 /(m*H),...
-                                        R * A * this.fn.f3_hdl(r,v) * this.rho(r) * v / m]; 
+            this.fn.df3_hdl = @(r,v) [ -0.5 * R^2 * A * this.fn.f3_hdl(r,v) * this.fn.rho_hdl(r) * v^2 /(m*H),...
+                                        R * A * this.fn.f3_hdl(r,v) * this.fn.rho_hdl(r) * v / m]; 
 
 
             %%
@@ -240,36 +240,6 @@ classdef vehicle
         
         
 %% DYNAMICS and COST FUNCTIONS     
-
-        function rho = rho(this,r)
-            % Check if numeric
-            if isnumeric(r)                                     
-                if norm(r)>1
-                    rho = this.fn.rho_hdl(r);
-                else
-                    rho = this.params.rho0;
-                end
-           
-            % Otherwise, if symbolic:
-            else
-               rho = this.fn.rho_hdl(r); 
-            end
-        end % end fx
-
-        function alpha = alpha(this,v)
-           % Check if numeric
-            if isnumeric(v)                                     
-                if norm(v)>4.570
-                    alpha = 40;
-                else
-                    alpha = this.fn.alpha_hdl(v);
-                end
-           
-            % Otherwise, if symbolic:
-            else
-                alpha = this.fn.alpha_hdl(v); 
-            end
-        end
         
         function fx = fx(this,x0,u0)
             fx = this.fn.fx_hdl(x0,u0);
