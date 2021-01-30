@@ -301,64 +301,7 @@ classdef vehicle
         end % end linsys_sym
         
         
-        % Numerical A,B values for continuous time dynamics
-        %{
-        function [A_c, B_c, fx_c] = linsys_c(this,A_sym,B_sym,...
-                                                x0,u0,N,n)
-                                    
-            % Set number of temporal nodes N if not given
-            if nargin==5
-               [n, N] = size(x0);
-               opt_in.N = N; % temporal nodes
-               opt_in.n = n; % length of state vector
-            end 
-            
-            % Set up symbols for substitution
-            syms u
-            x = sym('x',[n,1]);
-            
-            % Loop through all temporal nodes
-            for j=1:N
-                % Get proper indices for stacking A matrices at each node
-                r1 = (j-1)*n + 1;
-                r2 = j*n;
-                
-                % Determine continuous time numerical fx
-                fx_c(r1:r2,:) = this.fx(x0(:,j),u0(j));
-                
-                % Verify divide by zero error
-                for i1=1:n
-                   for i2=1:n
-                      % Replace divide by zero errors with eps for A
-                      [Anum,Adenom] = numden(A_sym(i1,i2));
-
-                      Adiv0 = (double(subs(Adenom,[x; u],[x0(:,j); u0(j)]))==0.0);
-
-                      if Adiv0
-                         fprintf('Divide by zero error, replacing with eps!\n' )
-                         A_sym(i1,i2) = Anum / eps;
-                      end
-                   end
-
-                   % Replace divide by zero errors with eps for B
-                   [Bnum,Bdenom] = numden(B_sym(i1,1));
-                   Bdiv0 = (double(subs(Bdenom,[x; u],[x0(:,j); u0(j)]))==0.0);
-                   if Bdiv0
-                         fprintf('Replacing!\n' )
-                         B_sym(i1) = Bnum / eps
-                   end
-                end
-                
-                % Determine continuous time numerical A matrix
-                A_c(r1:r2,:) = double(subs(A_sym,[x; u],[x0(:,j); u0(j)]));
-                
-                
-                % Determine continuous time numerical B matrix
-                B_c(r1:r2,1) = double(subs(B_sym,[x; u],[x0(:,j); u0(j)]));
-            end % end for j=1:N
-            
-        end
-        %}
+        
         function [A_c, B_c, fx_c] = linsys_c(this,A_hdl, B_hdl,...
                                                 x0,u0,N,n)
                                     
